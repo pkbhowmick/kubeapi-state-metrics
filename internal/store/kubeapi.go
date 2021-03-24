@@ -55,7 +55,7 @@ func wrapKubeapiFunc(f func(*v1alpha1.KubeApi) *metric.Family) func(interface{})
 	}
 }
 
-func createDeploymentListWatch(kubeapiClient clientset.Interface, ns string) cache.ListerWatcher {
+func createKubeapiListWatch(kubeapiClient clientset.Interface, ns string) cache.ListerWatcher {
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 			return kubeapiClient.StableV1alpha1().KubeApis(ns).List(context.TODO(), opts)
