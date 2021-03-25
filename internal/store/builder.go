@@ -6,13 +6,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kubernetes/kube-state-metrics/pkg/listwatch"
-	metricsstore "github.com/kubernetes/kube-state-metrics/pkg/metrics_store"
 	"github.com/pkbhowmick/k8s-crd/pkg/apis/stable.example.com/v1alpha1"
 	clientset "github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned"
 	ksmtypes "github.com/pkbhowmick/kubeapi-state-metrics/pkg/builder/types"
+	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/listwatch"
 	generator "github.com/pkbhowmick/kubeapi-state-metrics/pkg/metric_generator"
+	metricsstore "github.com/pkbhowmick/kubeapi-state-metrics/pkg/metrics_store"
 	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/options"
+	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/sharding"
 	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/watch"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,6 +29,9 @@ type Builder struct {
 	buildStoreFunc   ksmtypes.BuildStoreFunc
 	allowLabelsList  map[string][]string
 	allowDenyList    ksmtypes.AllowDenyLister
+	shardingMetrics  *sharding.Metrics
+	shard            int32
+	totalShards      int
 }
 
 func NewBuilder() *Builder {
@@ -41,6 +45,10 @@ func (b *Builder) WithGenerateStoreFunc(f ksmtypes.BuildStoreFunc) {
 
 func (b *Builder) WithMetrics(r prometheus.Registerer) {
 	b.listWatchMetrics = watch.NewListWatchMetrics(r)
+}
+
+func (b *Builder) WithKubeapiClient(c clientset.Interface) {
+	b.kubeapiClient = c
 }
 
 // WithEnabledResources sets the enabledResources property of a Builder.
