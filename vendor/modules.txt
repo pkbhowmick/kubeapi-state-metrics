@@ -71,6 +71,13 @@ github.com/mwitkow/go-conntrack
 # github.com/oklog/run v1.1.0
 ## explicit
 github.com/oklog/run
+# github.com/pkbhowmick/k8s-crd v0.0.0-20210304112549-69a20ee433df
+## explicit
+github.com/pkbhowmick/k8s-crd/pkg/apis/stable.example.com
+github.com/pkbhowmick/k8s-crd/pkg/apis/stable.example.com/v1alpha1
+github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned
+github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned/scheme
+github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned/typed/stable.example.com/v1alpha1
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -96,6 +103,8 @@ github.com/prometheus/exporter-toolkit/web
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/robfig/cron/v3 v3.0.1
+github.com/robfig/cron/v3
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
@@ -134,7 +143,6 @@ golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-## explicit
 golang.org/x/time/rate
 # google.golang.org/appengine v1.6.7
 google.golang.org/appengine
@@ -362,8 +370,10 @@ k8s.io/client-go/util/workqueue
 k8s.io/klog/v2
 # k8s.io/kube-state-metrics/v2 v2.0.0-rc.1
 ## explicit
+k8s.io/kube-state-metrics/v2/internal/store
 k8s.io/kube-state-metrics/v2/pkg/allowdenylist
 k8s.io/kube-state-metrics/v2/pkg/builder/types
+k8s.io/kube-state-metrics/v2/pkg/constant
 k8s.io/kube-state-metrics/v2/pkg/listwatch
 k8s.io/kube-state-metrics/v2/pkg/metric
 k8s.io/kube-state-metrics/v2/pkg/metric_generator
@@ -373,7 +383,6 @@ k8s.io/kube-state-metrics/v2/pkg/sharding
 k8s.io/kube-state-metrics/v2/pkg/util/proc
 k8s.io/kube-state-metrics/v2/pkg/watch
 # k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
-## explicit
 k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/trace

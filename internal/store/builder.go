@@ -23,16 +23,17 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkbhowmick/k8s-crd/pkg/apis/stable.example.com/v1alpha1"
+
+	clientset "github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	appsv1 "k8s.io/api/apps/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
-	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
+	ksmtypes "github.com/pkbhowmick/kubeapi-state-metrics/pkg/builder/types"
 	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/options"
-	ksmtypes "k8s.io/kube-state-metrics/v2/pkg/builder/types"
 	"k8s.io/kube-state-metrics/v2/pkg/listwatch"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	metricsstore "k8s.io/kube-state-metrics/v2/pkg/metrics_store"
@@ -158,7 +159,7 @@ func (b *Builder) Build() []cache.Store {
 }
 
 var availableStores = map[string]func(f *Builder) cache.Store{
-	"deployments": func(b *Builder) cache.Store { return b.buildDeploymentStore() },
+	"kubeapis": func(b *Builder) cache.Store { return b.buildKubeApiStore() },
 }
 
 func resourceExists(name string) bool {
@@ -174,8 +175,8 @@ func availableResources() []string {
 	return c
 }
 
-func (b *Builder) buildDeploymentStore() cache.Store {
-	return b.buildStoreFunc(deploymentMetricFamilies(b.allowLabelsList["deployments"]), &appsv1.Deployment{}, createDeploymentListWatch)
+func (b *Builder) buildKubeApiStore() cache.Store {
+	return b.buildStoreFunc(kubeapiMetricsFamily(b.allowLabelsList["kubeapis"]), &v1alpha1.KubeApi{}, createKubeApiListWatch)
 }
 
 func (b *Builder) buildStore(

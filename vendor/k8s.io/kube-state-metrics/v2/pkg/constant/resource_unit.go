@@ -14,18 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package options
+package constant
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
+// ResourceUnit represents the unit of measure for certain metrics.
+type ResourceUnit string
 
-var (
-	// DefaultNamespaces is the default namespace selector for selecting and filtering across all namespaces.
-	DefaultNamespaces = NamespaceList{metav1.NamespaceAll}
-
-	// DefaultResources represents the default set of resources in kube-state-metrics.
-	DefaultResources = ResourceSet{
-		"kubeapis": struct{}{},
-	}
+const (
+	// UnitByte is the unit of measure in bytes.
+	UnitByte ResourceUnit = "byte"
+	// UnitCore is the unit of measure in CPU cores.
+	UnitCore ResourceUnit = "core"
+	// UnitInteger is the unit of measure in integers.
+	UnitInteger ResourceUnit = "integer"
 )

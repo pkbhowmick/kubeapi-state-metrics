@@ -21,15 +21,10 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/kubernetes"
+	kubernetes "github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
@@ -86,94 +81,6 @@ func (m *MetricsHandler) ConfigureSharding(ctx context.Context, shard int32, tot
 	m.curTotalShards = totalShards
 }
 
-// Run configures the MetricsHandler's sharding and if autosharding is enabled
-// re-configures sharding on re-sharding events. Run should only be called
-// once.
-func (m *MetricsHandler) Run(ctx context.Context) error {
-	autoSharding := len(m.opts.Pod) > 0 && len(m.opts.Namespace) > 0
-
-	if !autoSharding {
-		klog.Info("Autosharding disabled")
-		m.ConfigureSharding(ctx, m.opts.Shard, m.opts.TotalShards)
-		<-ctx.Done()
-		return ctx.Err()
-	}
-
-	klog.Infof("Autosharding enabled with pod=%v pod_namespace=%v", m.opts.Pod, m.opts.Namespace)
-	klog.Infof("Auto detecting sharding settings.")
-	ss, err := detectStatefulSet(m.kubeClient, m.opts.Pod, m.opts.Namespace)
-	if err != nil {
-		return errors.Wrap(err, "detect StatefulSet")
-	}
-	statefulSetName := ss.Name
-
-	labelSelectorOptions := func(o *metav1.ListOptions) {
-		o.LabelSelector = fields.SelectorFromSet(ss.Labels).String()
-	}
-
-	i := cache.NewSharedIndexInformer(
-		cache.NewFilteredListWatchFromClient(m.kubeClient.AppsV1().RESTClient(), "statefulsets", m.opts.Namespace, labelSelectorOptions),
-		&appsv1.StatefulSet{}, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	i.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(o interface{}) {
-			ss := o.(*appsv1.StatefulSet)
-			if ss.Name != statefulSetName {
-				return
-			}
-
-			shard, totalShards, err := shardingSettingsFromStatefulSet(ss, m.opts.Pod)
-			if err != nil {
-				klog.Errorf("detect sharding settings from StatefulSet: %v", err)
-				return
-			}
-
-			m.mtx.RLock()
-			shardingUnchanged := m.curShard == shard && m.curTotalShards == totalShards
-			m.mtx.RUnlock()
-
-			if shardingUnchanged {
-				return
-			}
-
-			m.ConfigureSharding(ctx, shard, totalShards)
-		},
-		UpdateFunc: func(oldo, curo interface{}) {
-			old := oldo.(*appsv1.StatefulSet)
-			cur := curo.(*appsv1.StatefulSet)
-			if cur.Name != statefulSetName {
-				return
-			}
-
-			if old.ResourceVersion == cur.ResourceVersion {
-				return
-			}
-
-			shard, totalShards, err := shardingSettingsFromStatefulSet(cur, m.opts.Pod)
-			if err != nil {
-				klog.Errorf("detect sharding settings from StatefulSet: %v", err)
-				return
-			}
-
-			m.mtx.RLock()
-			shardingUnchanged := m.curShard == shard && m.curTotalShards == totalShards
-			m.mtx.RUnlock()
-
-			if shardingUnchanged {
-				return
-			}
-
-			m.ConfigureSharding(ctx, shard, totalShards)
-		},
-	})
-	go i.Run(ctx.Done())
-	if !cache.WaitForCacheSync(ctx.Done(), i.HasSynced) {
-		return errors.New("waiting for informer cache to sync failed")
-	}
-	<-ctx.Done()
-	return ctx.Err()
-}
-
 // ServeHTTP implements the http.Handler interface. It writes the metrics in
 // its stores to the response body.
 func (m *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -208,52 +115,4 @@ func (m *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if closer, ok := writer.(io.Closer); ok {
 		closer.Close()
 	}
-}
-
-func shardingSettingsFromStatefulSet(ss *appsv1.StatefulSet, podName string) (nominal int32, totalReplicas int, err error) {
-	nominal, err = detectNominalFromPod(ss.Name, podName)
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "detecting Pod nominal")
-	}
-
-	totalReplicas = 1
-	replicas := ss.Spec.Replicas
-	if replicas != nil {
-		totalReplicas = int(*replicas)
-	}
-
-	return nominal, totalReplicas, nil
-}
-
-func detectNominalFromPod(statefulSetName, podName string) (int32, error) {
-	nominalString := strings.TrimPrefix(podName, statefulSetName+"-")
-	nominal, err := strconv.Atoi(nominalString)
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed to detect shard index for Pod %s of StatefulSet %s, parsed %s", podName, statefulSetName, nominalString)
-	}
-
-	return int32(nominal), nil
-}
-
-func detectStatefulSet(kubeClient kubernetes.Interface, podName, namespaceName string) (*appsv1.StatefulSet, error) {
-	p, err := kubeClient.CoreV1().Pods(namespaceName).Get(context.TODO(), podName, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "retrieve pod %s for sharding", podName)
-	}
-
-	owners := p.GetOwnerReferences()
-	for _, o := range owners {
-		if o.APIVersion != "apps/v1" || o.Kind != "StatefulSet" || o.Controller == nil || !*o.Controller {
-			continue
-		}
-
-		ss, err := kubeClient.AppsV1().StatefulSets(namespaceName).Get(context.TODO(), o.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "retrieve shard's StatefulSet: %s/%s", namespaceName, o.Name)
-		}
-
-		return ss, nil
-	}
-
-	return nil, errors.Errorf("no suitable statefulset found for auto detecting sharding for Pod %s/%s", namespaceName, podName)
 }

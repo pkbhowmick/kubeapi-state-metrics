@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/oklog/run"
+	clientset "github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned"
 	"github.com/pkbhowmick/kubeapi-state-metrics/internal/store"
 	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/metricshandler"
 	"github.com/pkbhowmick/kubeapi-state-metrics/pkg/options"
@@ -37,7 +38,6 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
-	clientset "k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
@@ -173,14 +173,14 @@ func main() {
 	//Debug("storeBuilder")
 	//fmt.Println(*storeBuilder)
 	// Run MetricsHandler
-	{
-		ctxMetricsHandler, cancel := context.WithCancel(ctx)
-		g.Add(func() error {
-			return m.Run(ctxMetricsHandler)
-		}, func(error) {
-			cancel()
-		})
-	}
+	//{
+	//	ctxMetricsHandler, cancel := context.WithCancel(ctx)
+	//	g.Add(func() error {
+	//		return m.Run(ctxMetricsHandler)
+	//	}, func(error) {
+	//		cancel()
+	//	})
+	//}
 
 	tlsConfig := opts.TLSConfig
 

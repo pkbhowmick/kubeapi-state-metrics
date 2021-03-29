@@ -18,7 +18,6 @@ package store
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
@@ -278,8 +277,6 @@ func wrapDeploymentFunc(f func(*v1.Deployment) *metric.Family) func(interface{})
 		deployment := obj.(*v1.Deployment)
 
 		metricFamily := f(deployment)
-
-		fmt.Println(metricFamily)
 
 		for _, m := range metricFamily.Metrics {
 			m.LabelKeys = append(descDeploymentLabelsDefaultLabels, m.LabelKeys...)
