@@ -19,12 +19,13 @@ package metricshandler
 import (
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 
-	kubernetes "github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned"
+	kubeapiClient "github.com/pkbhowmick/k8s-crd/pkg/client/clientset/versioned"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
@@ -37,7 +38,7 @@ import (
 // /metrics endpoint. It allows concurrent reconfiguration at runtime.
 type MetricsHandler struct {
 	opts               *options.Options
-	kubeClient         kubernetes.Interface
+	kubeClient         kubeapiClient.Interface
 	storeBuilder       *store.Builder
 	enableGZIPEncoding bool
 
@@ -51,7 +52,7 @@ type MetricsHandler struct {
 }
 
 // New creates and returns a new MetricsHandler with the given options.
-func New(opts *options.Options, kubeClient kubernetes.Interface, storeBuilder *store.Builder, enableGZIPEncoding bool) *MetricsHandler {
+func New(opts *options.Options, kubeClient kubeapiClient.Interface, storeBuilder *store.Builder, enableGZIPEncoding bool) *MetricsHandler {
 	//store.Debug("Creating New Metrics Handler")
 	return &MetricsHandler{
 		opts:               opts,
@@ -84,7 +85,7 @@ func (m *MetricsHandler) ConfigureSharding(ctx context.Context, shard int32, tot
 // ServeHTTP implements the http.Handler interface. It writes the metrics in
 // its stores to the response body.
 func (m *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//store.Debug("Metrics Handler Serve HTTP function called")
+	store.Debug("Metrics Handler Serve HTTP function called")
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 	resHeader := w.Header()
@@ -106,8 +107,13 @@ func (m *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	store.Debug("Priting m")
+	fmt.Println(m.stores)
+
 	for _, s := range m.stores {
 		ms := s.(*metricsstore.MetricsStore)
+		store.Debug("Priting ms")
+		fmt.Println(ms)
 		ms.WriteAll(writer)
 	}
 
@@ -115,4 +121,15 @@ func (m *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if closer, ok := writer.(io.Closer); ok {
 		closer.Close()
 	}
+}
+
+// Run configures the MetricsHandler's sharding and if autosharding is enabled
+// re-configures sharding on re-sharding events. Run should only be called
+// once.
+func (m *MetricsHandler) Run(ctx context.Context) error {
+
+	klog.Info("Autosharding disabled")
+	m.ConfigureSharding(ctx, m.opts.Shard, m.opts.TotalShards)
+	<-ctx.Done()
+	return ctx.Err()
 }

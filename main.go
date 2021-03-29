@@ -173,14 +173,14 @@ func main() {
 	//Debug("storeBuilder")
 	//fmt.Println(*storeBuilder)
 	// Run MetricsHandler
-	//{
-	//	ctxMetricsHandler, cancel := context.WithCancel(ctx)
-	//	g.Add(func() error {
-	//		return m.Run(ctxMetricsHandler)
-	//	}, func(error) {
-	//		cancel()
-	//	})
-	//}
+	{
+		ctxMetricsHandler, cancel := context.WithCancel(ctx)
+		g.Add(func() error {
+			return m.Run(ctxMetricsHandler)
+		}, func(error) {
+			cancel()
+		})
+	}
 
 	tlsConfig := opts.TLSConfig
 

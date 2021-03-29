@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	descKubeApiLabelsName          = "kubeApi_deployment_labels"
+	descKubeApiLabelsName          = "kubeApi_resource_labels"
 	descKubeApiLabelsHelp          = "Kubernetes labels converted to Prometheus labels."
 	descKubeApiLabelsDefaultLabels = []string{"namespace", "kubeapi"}
 )
@@ -30,7 +30,22 @@ func kubeapiMetricsFamily(allowLabelsList []string) []generator.FamilyGenerator 
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
-							Value: float64(d.Status.Replicas),
+							Value: float64(*d.Spec.Replicas),
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"kubeapi_test_metrics",
+			"This metrics is used for debugging",
+			metric.Gauge,
+			"",
+			wrapKubeApiFunc(func(_ *v1alpha1.KubeApi) *metric.Family {
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							Value: float64(100),
 						},
 					},
 				}
